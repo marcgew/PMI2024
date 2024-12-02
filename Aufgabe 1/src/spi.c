@@ -13,7 +13,9 @@ int32_t spi_init_adxl345(void)
 
     GPIOA->AFR[0] |= (GPIO_AFRL_AFSEL5) | (GPIO_AFRL_AFSEL6) | (GPIO_AFRL_AFSEL7);      //Set alternate function 0 for PA05, PA06, PA07
 
-    //SPI Chip Select auf PA11 und PA12
+    //SPI Chip Select auf PA12
+    GPIOA->MODER |= GPIO_MODER_MODE12_0;
+    GPIOA->MODER &= ~(GPIO_MODER_MODE12_1); 
 
     SPI_CR1_SPE;
 
