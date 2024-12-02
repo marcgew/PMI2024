@@ -17,10 +17,10 @@ int32_t spi_init_adxl345(void)
 
     SPI_CR1_SPE;
 
-    SPI1->CR1 |= SPI_CR1_BR;
-    SPI1->CR1 |= SPI_CR1_MSTR; // Master Config
-    SPI1->CR1 |= SPI_CR1_CPHA;
-    SPI1->CR1 |= SPI_CR1_CPOL;
+    SPI1->CR1 |= SPI_CR1_BR;    
+    SPI1->CR1 |= SPI_CR1_MSTR;  // Master Config
+    SPI1->CR1 |= SPI_CR1_CPHA;  
+    SPI1->CR1 |= SPI_CR1_CPOL;  
 }
 
 int32_t spi_txrx(uint8_t *buf, uint32_t size)
