@@ -12,8 +12,9 @@ int32_t spi_init_adxl345(void)
 
     GPIOA->MODER |= (GPIO_MODER_MODE5_1 | GPIO_MODER_MODE6_1 | GPIO_MODER_MODE7_1);     //Set alternate function mode
 
-    GPIOA->AFR[0] &= ~((GPIO_AFRL_AFSEL5) + (GPIO_AFRL_AFSEL6) + (GPIO_AFRL_AFSEL7));      //Set alternate function 0 for PA05, PA06, PA07
-    //GPIOB->AFR[0] |= (5 << GPIO_AFRL_AFSEL5_Pos) | (5 << GPIO_AFRL_AFSEL6_Pos) | (5 << GPIO_AFRL_AFSEL7_Pos);
+    //Set alternate function 0 for PA05, PA06, PA07
+    GPIOA->AFR[0] &= ~((0xF << GPIO_AFRL_AFSEL5_Pos) | (0xF << GPIO_AFRL_AFSEL6_Pos) | (0xF << GPIO_AFRL_AFSEL7_Pos));
+
 
 
     //SPI Chip Select auf PA12  
