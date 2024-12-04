@@ -2,6 +2,7 @@
 #include <stm32l0xx.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include "spi.h"
 
 int32_t spi_init_adxl345(void)
 {
@@ -15,30 +16,43 @@ int32_t spi_init_adxl345(void)
     //Set alternate function 0 for PA05, PA06, PA07
     GPIOA->AFR[0] &= ~((0xF << GPIO_AFRL_AFSEL5_Pos) | (0xF << GPIO_AFRL_AFSEL6_Pos) | (0xF << GPIO_AFRL_AFSEL7_Pos));
 
-
-
+    
     //SPI Chip Select auf PA12  
     GPIOA->MODER |= GPIO_MODER_MODE12_0;
     GPIOA->MODER &= ~(GPIO_MODER_MODE12_1); 
+    GPIOA->ODR |= GPIO_ODR_OD12;
 
-    SPI1->CR1 &= ~SPI_CR1_SPE; //disable spi for config
 
-    SPI1->CR1 &= ~SPI_CR1_BR_2;
-    SPI1->CR1 |=  SPI_CR1_BR_0; // 
-    SPI1->CR1 |=  SPI_CR1_BR_1;
+    SPI1->CR1 &= ~(SPI_CR1_SPE); //disable spi for config
+
+    
 
     SPI1->CR1 |= SPI_CR1_MSTR;  // Master Config
+    
+    SPI1->CR1 |= SPI_CR1_BR_2;
+    SPI1->CR1 &= ~SPI_CR1_BR_0; // 
+    SPI1->CR1 &= ~SPI_CR1_BR_1;
+
     SPI1->CR1 |= SPI_CR1_CPHA;  
     SPI1->CR1 |= SPI_CR1_CPOL;  
     SPI1->CR1 |= SPI_CR1_SSM;   //Software Slave Management
-    SPI1->CR1 |= SPI_CR1_SSI;   //Internal Slave Select        
+    SPI1->CR1 |= SPI_CR1_SSI;   //Internal Slave Select      
+
 
     SPI1->CR1 |= SPI_CR1_SPE; //enable SPI 
-} 
+
+    return RC_SUCC;
+}
+
 
 int32_t spi_txrx(uint8_t *buf, uint32_t size)
 {
     GPIOA->ODR &= ~(GPIO_ODR_OD12);     //slave select
+
+    //while (SPI1->SR & SPI_SR_BSY)
+    //{
+        // wait until whole transfer is done 
+    //} 
 
     for (uint8_t i = 0; i < size; i++)
     {
@@ -55,11 +69,10 @@ int32_t spi_txrx(uint8_t *buf, uint32_t size)
         }
         buf[i] = SPI1->DR;      //read received bit
     }
-    while (SPI1->SR & SPI_SR_BSY);
-    {
-        // wait until whole transfer is done 
-    } 
-    GPIOA->ODR |= GPIO_ODR_OD12; // unselect slave 
+    
+    GPIOA->ODR |= GPIO_ODR_OD12; // deselect slave 
+    
+    return RC_SUCC;
 
 }
 

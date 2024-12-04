@@ -11,8 +11,7 @@
  * @param[in] resolution Number of decimals
  * @return See @ref PMI_RC_E
  */
-uint32_t pmi_string_float2str(char *str, uint16_t str_len, float value,
-    uint32_t resolution)
+uint32_t pmi_string_float2str(char *str, uint16_t str_len, float value, uint32_t resolution)
 {
     int32_t rc;
     int32_t integer;

@@ -80,3 +80,12 @@ char uart_rx_char(void)
     /* Read character */
     return (char) USART2->RDR;
 }
+
+void uart_tx_str(char *buf)
+{
+    while(*buf)
+    {
+        uart_tx_char(*buf);
+        buf++;
+    }
+}
