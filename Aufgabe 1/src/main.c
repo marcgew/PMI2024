@@ -15,28 +15,28 @@ int main(void)
     //ili9341_init(0);
 
     ADXL345_measure_init();
-
+    float acc_x = 0x0000;
+    float acc_y = 0x0000;
+    float acc_z = 0x0000;
   
 
-    float *x_float;
-    float *y_float;
-    float *z_float;
+    float x_float = 0;
+    float y_float = 0;
+    float z_float = 0;
     char x_str[10]; 
     char y_str[10]; 
     char z_str[10]; 
-
-
 
     while(1)
     {   
         
         ADXL345_collect_data(&x_float, &y_float, &z_float);
 
-        //pmi_string_float2str(x_str, 10, x_float, 10);
-        //pmi_string_float2str(y_str, 10, y_float,10);
-        //pmi_string_float2str(z_str, 10, z_float, 10);
+        pmi_string_float2str(x_str, 10, x_float, 10);
+        pmi_string_float2str(y_str, 10, y_float,10);
+        pmi_string_float2str(z_str, 10, z_float, 10);
 
-/*
+
         uart_tx_str(x_str);
         uart_tx_str("\n");
         systick_delay_ms(1000);
@@ -48,7 +48,7 @@ int main(void)
         systick_delay_ms(1000);
         //ili9341_text_pos_set(10, 10);
         //ili9341_str_print(x_str[10], ILI9341_COLOR_LIGHTGREY, ILI9341_COLOR_WHITE);
-   */
+
 
         //ili9341_text_pos_set(20, 10);
         //ili9341_str_print(y_str[10], ILI9341_COLOR_LIGHTGREY, ILI9341_COLOR_WHITE);
@@ -58,7 +58,7 @@ int main(void)
         //ili9341_str_print(z_str[10], ILI9341_COLOR_LIGHTGREY, ILI9341_COLOR_WHITE);
         //systick_delay_ms(1000);
            // adxl_get_deviceid();
-            systick_delay_ms(3000);
+         systick_delay_ms(3000);
         
     }
 }

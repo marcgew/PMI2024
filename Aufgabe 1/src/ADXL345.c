@@ -20,9 +20,14 @@ void ADXL345_collect_data(float *x_data , float *y_data, float *z_data)
     // sortierung nach X lsb X msb dann Y lsb MSB etc  0b11110010
     spi_txrx(measure_values, 7);
 
-    u_int16_t x =((8 << measure_values[2]) + measure_values[1]);
-    u_int16_t y =((8 << measure_values[4]) + measure_values[3]);
-    u_int16_t z =((8 << measure_values[6]) + measure_values[5]);
+     *x_data =((measure_values[2]<< 8) | measure_values[1]);
+     *y_data =((measure_values[4]<< 8) | measure_values[3]);
+     *z_data =((measure_values[6]<< 8) | measure_values[5]);
+
+     *x_data  = (float)((int16_t)(*x_data)* 0.0039)*9.81;
+     *y_data  = (float)((int16_t)(*y_data)* 0.0039)*9.81;
+     *z_data  = (float)((int16_t)(*z_data)* 0.0039)*9.81;
+     
 }
 
 uint8_t adxl_get_deviceid(void)
