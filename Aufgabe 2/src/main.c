@@ -5,16 +5,18 @@
 #include <systick.h>
 #include <ili9341.h>
 #include <pmi_string.h>
+#include <i2c_sw.h>
 
 int main(void)
 {
-    /* Call your initialisations here */
+    //Call your initialisations here
     clocks_init_pmi();
     uart_init_nucusb(115200);
     spi_init_adxl345();
     ili9341_init(0);
     ADXL345_measure_init();
-
+    i2c_sw_init();
+  /*
     float x_float = 0;
     float y_float = 0;
     float z_float = 0;
@@ -28,14 +30,19 @@ int main(void)
     ili9341_text_pos_set(1, 8);
     ili9341_str_print("ADXL345-Z:", ILI9341_COLOR_DARKCYAN, ILI9341_COLOR_BLACK);
 
-    
+     */
 
     while (1)
     {
-      
+       
+        
+        i2c_start_communication();
+        systick_delay_ms(300);
+        i2c_stop_communication();
+        systick_delay_ms(300);
         
 
-
+        /*
         ADXL345_collect_data(&x_float, &y_float, &z_float);
 
         pmi_string_float2str(x_str, 7, x_float, 7);
@@ -67,6 +74,6 @@ int main(void)
         uart_tx_str("\n");
 
         systick_delay_ms(100);
-
+        */
     }
 }
