@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <spi.h>
+#include <ADXL345.h>
 
 
 /**
