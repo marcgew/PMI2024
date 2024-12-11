@@ -15,14 +15,9 @@
 
 void i2c_sw_init(void)
 {
+  
     /* Enable GPIO clock for port B */
     RCC->IOPENR |= RCC_IOPENR_IOPBEN;
-
-    /* Reset mode for PB8, PB9 */
-    GPIOB->MODER &= ~(GPIO_MODER_MODE8_0 | GPIO_MODER_MODE9_0);
-    /* Set alternative function  mode for PB8, PB9 */
-    GPIOB->MODER |= (GPIO_MODER_MODE8_1 | GPIO_MODER_MODE9_1);
-
 
     GPIOB->MODER |= GPIO_MODER_MODE8_0; // set PA12 Output
     GPIOB->MODER &= ~(GPIO_MODER_MODE8_1);
@@ -35,12 +30,13 @@ void i2c_sw_init(void)
     /* Set speed mode to medium speed */
     GPIOB->OSPEEDR |= GPIO_MODER_MODE8_0 | GPIO_MODER_MODE9_0;
 
-    /* Set alternative function to AF4 for pin PB8, PB9.*/
-    GPIOB->AFR[1] |= (4 << GPIO_AFRH_AFSEL8_Pos) | (4 << GPIO_AFRH_AFSEL9_Pos);
-
     // set SDA PB8 & SCL PB9 to high
     GPIOB->ODR |= GPIO_ODR_OD8;
     GPIOB->ODR |= GPIO_ODR_OD9;
+
+    //eventuell noch das anstelle vom high ziehen oben?
+    GPIOB->PUPDR |= GPIO_PUPDR_PUPD9_0;      
+    GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD9_1);
 }
 
 void i2c_start_communication(void)
@@ -61,5 +57,30 @@ void i2c_stop_communication(void)
     SCL_HIGH;
     nop_50; //delay
     SDA_HIGH;
+
+}
+
+
+int32_t i2c_send(uint8_t buffer)
+{
+     if (buffer & 0x80)
+     {
+        SDA_HIGH;
+     }
+     else
+    {
+        SDA_LOW;
+ 
+    }
+
+     data <<=1; 
+
+
+}
+
+int32_t i2c_recieve(uint8_t ack)
+{
+    
+
 
 }
