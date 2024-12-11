@@ -36,10 +36,12 @@ int main(void)
     {
        
         
-        i2c_start_communication();
-        systick_delay_ms(300);
-        i2c_stop_communication();
-        systick_delay_ms(300);
+      i2c_start_communication();
+      i2c_send_byte(0b00011011);
+      i2c_send_byte(0b00000000);
+      uint8_t blue = i2c_recieve_byte(1);
+      i2c_stop_communication();
+      systick_delay_ms(300);
         
 
         /*

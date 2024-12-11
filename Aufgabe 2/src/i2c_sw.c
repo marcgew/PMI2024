@@ -7,15 +7,16 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <pmi_stddefs.h>
+
 /**
  * This is a specific I2C software implementation for use with PMI-BoB2:
- * * SDA is on GPIOB pin 8 
+ * * SDA is on GPIOB pin 8
  * * SCL is on GPIOB pin 9
  */
 
 void i2c_sw_init(void)
 {
-  
+
     /* Enable GPIO clock for port B */
     RCC->IOPENR |= RCC_IOPENR_IOPBEN;
 
@@ -30,13 +31,22 @@ void i2c_sw_init(void)
     /* Set speed mode to medium speed */
     GPIOB->OSPEEDR |= GPIO_MODER_MODE8_0 | GPIO_MODER_MODE9_0;
 
-    // set SDA PB8 & SCL PB9 to high
-    GPIOB->ODR |= GPIO_ODR_OD8;
-    GPIOB->ODR |= GPIO_ODR_OD9;
 
-    //eventuell noch das anstelle vom high ziehen oben?
-    GPIOB->PUPDR |= GPIO_PUPDR_PUPD9_0;      
-    GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD9_1);
+
+    // eventuell noch das anstelle vom high ziehen oben?
+    //GPIOB->PUPDR |= GPIO_PUPDR_PUPD9_0;
+    //GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD9_1);
+
+    //GPIOB->PUPDR |= GPIO_PUPDR_PUPD8_0;
+    //GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD8_1);
+}
+
+void delay_func(void)
+{
+    for (uint16_t i = 0; i < 8000; i++)
+    {
+        
+    }
 }
 
 void i2c_start_communication(void)
@@ -44,43 +54,72 @@ void i2c_start_communication(void)
 
     SCL_HIGH;
     SDA_HIGH;
-    nop_50;// delay test
-    SDA_LOW; //SDA_LOW;
-    nop_50;
+    delay_func();
+    SDA_LOW;
+    delay_func();
 }
 
 void i2c_stop_communication(void)
 {
     SCL_LOW;
     SDA_LOW;
-    nop_50; //delay
+    delay_func();
     SCL_HIGH;
-    nop_50; //delay
+    delay_func();
     SDA_HIGH;
-
 }
 
-
-int32_t i2c_send(uint8_t buffer)
+int32_t i2c_send_byte(uint8_t buffer)
 {
-     if (buffer & 0x80)
-     {
-        SDA_HIGH;
-     }
-     else
+
+    for (uint8_t i = 0; i < 8; i++)
     {
-        SDA_LOW;
- 
+        SCL_LOW;
+        delay_func();
+        if (buffer & 0x80)
+        {
+            SDA_HIGH;
+            buffer <<= 1;
+        }
+        else
+        {
+            SDA_LOW;
+            buffer <<= 1;
+        }
+        delay_func();
+        
+        SCL_HIGH;
+        delay_func();
+    }
+    SCL_LOW;
+    delay_func();
+    return RC_SUCC;
+}
+
+int32_t i2c_recieve_byte(uint8_t ack)
+{
+    uint8_t Buffer = 0;
+
+    // input mode
+    // GPIOB->MODER &= ~GPIO_MODER_MODE8;
+    // GPIOB->PUPDR |= GPIO_PUPDR_PUPD8_0;
+    // GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD8_1);
+
+    // for loop receive
+
+    for (uint8_t i = 0; i < 8; i++)
+    {
+        SCL_LOW;
+        delay_func();
+
+        GPIOB->IDR |= Buffer;
+
+        Buffer <<= 1;
+
+        SCL_HIGH;
+        delay_func();
     }
 
-     data <<=1; 
-
-
-}
-
-int32_t i2c_recieve(uint8_t ack)
-{
-    
-
-
+    // output mode
+    return Buffer;
 }
