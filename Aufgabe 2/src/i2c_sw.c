@@ -8,11 +8,7 @@
 #include <stddef.h>
 #include <pmi_stddefs.h>
 
-/**
- * This is a specific I2C software implementation for use with PMI-BoB2:
- * * SDA is on GPIOB pin 8
- * * SCL is on GPIOB pin 9
- */
+
 
 void i2c_sw_init(void)
 {
@@ -34,11 +30,11 @@ void i2c_sw_init(void)
 
 
     // eventuell noch das anstelle vom high ziehen oben?
-    //GPIOB->PUPDR |= GPIO_PUPDR_PUPD9_0;
-    //GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD9_1);
+    GPIOB->PUPDR |= GPIO_PUPDR_PUPD9_0;
+    GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD9_1);
 
-    //GPIOB->PUPDR |= GPIO_PUPDR_PUPD8_0;
-    //GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD8_1);
+    GPIOB->PUPDR |= GPIO_PUPDR_PUPD8_0;
+    GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD8_1);
 }
 
 void delay_func(void)
@@ -96,14 +92,14 @@ int32_t i2c_send_byte(uint8_t buffer)
     return RC_SUCC;
 }
 
-int32_t i2c_recieve_byte(uint8_t ack)
+int32_t i2c_recieve_byte(uint8_t ack_bit)
 {
     uint8_t Buffer = 0;
 
-    // input mode
-    // GPIOB->MODER &= ~GPIO_MODER_MODE8;
-    // GPIOB->PUPDR |= GPIO_PUPDR_PUPD8_0;
-    // GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD8_1);
+    // input mode 
+    GPIOB->MODER &= ~GPIO_MODER_MODE9;      
+    GPIOB->PUPDR |= GPIO_PUPDR_PUPD9_1;      
+
 
     // for loop receive
 
@@ -112,7 +108,10 @@ int32_t i2c_recieve_byte(uint8_t ack)
         SCL_LOW;
         delay_func();
 
-        GPIOB->IDR |= Buffer;
+        if ((GPIOB->IDR & GPIO_IDR_ID9)) //check state of input pin PB9
+        {
+        Buffer |= 1;
+        }
 
         Buffer <<= 1;
 
@@ -121,5 +120,22 @@ int32_t i2c_recieve_byte(uint8_t ack)
     }
 
     // output mode
+    GPIOB->MODER |= GPIO_MODER_MODE9_0; // set PB9 Output
+    GPIOB->MODER &= ~(GPIO_MODER_MODE9_1);
+    GPIOB->PUPDR |= GPIO_PUPDR_PUPD9_0;      
+    GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD9_1);
+
+    if (ack_bit == 1)
+    {
+        SDA_LOW;
+    }
+    else
+    {
+        SDA_HIGH;
+    }
+    
+    SCL_HIGH;
+    delay_func();
+
     return Buffer;
 }

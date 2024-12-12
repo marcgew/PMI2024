@@ -14,7 +14,7 @@ void i2c_sw_init(void);
 void i2c_start_communication(void);
 void i2c_stop_communication(void);
 int32_t i2c_send_byte(uint8_t buffer);
-int32_t i2c_recieve_byte(uint8_t ack);
+int32_t i2c_recieve_byte(uint8_t ack_bit);
 
 
 
