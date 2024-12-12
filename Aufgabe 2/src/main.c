@@ -12,9 +12,7 @@ int main(void)
     //Call your initialisations here
     clocks_init_pmi();
     uart_init_nucusb(115200);
-    spi_init_adxl345();
     ili9341_init(0);
-    ADXL345_measure_init();
     i2c_sw_init();
   /*
     float x_float = 0;
@@ -32,16 +30,32 @@ int main(void)
 
      */
 
+    i2c_start_communication();
+  
+    i2c_send_byte(0b00011011);       //device address
+      
+    
+    i2c_send_byte(0x0B);        //define set register
+       
+
+    i2c_send_byte(0b00000001);        //define set bit 
+ 
+
+    i2c_send_byte(0b00001001);        //00001001 set continuous measurement mode
+      
+
+
+     i2c_send_byte(0b00011101);        //00011101 set continuous measurement bit
+
+     i2c_send_byte(0b00000000);
+
+     i2c_stop_communication();
+
     while (1)
     {
        
-        
-      i2c_start_communication();
-      i2c_send_byte(0b00011011);
-      i2c_send_byte(0b00000000);
-      uint8_t blue = i2c_recieve_byte(1);
-      i2c_stop_communication();
-      systick_delay_ms(300);
+      //uint8_t blue = i2c_recieve_byte(1);
+     // i2c_stop_communication();
         
 
         /*
