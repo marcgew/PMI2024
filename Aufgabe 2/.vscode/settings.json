@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.embeddedhtml": "html",
         "clocks.h": "c",
         "uart.h": "c",
         "stm32l0xx.h": "c",
@@ -15,6 +16,7 @@
         "ili_priv.h": "c",
         "systick.h": "c",
         "freemonobold12pt7b.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "i2c_sw.h": "c"
     }
 }
