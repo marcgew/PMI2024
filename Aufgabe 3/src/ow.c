@@ -4,13 +4,8 @@
 #include <stdio.h>
 #include <ow.h>
 
-
-
-
-
 void ow_init(void)
 {
-
 
     RCC->IOPENR |= RCC_IOPENR_IOPBEN; // Enable GPIO clock for port B
 
@@ -36,24 +31,32 @@ void ow_tim_init(void)
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
 
     // Configure TIM2
-    TIM2->PSC = 16;      // Set prescaler for 1 kHz timer clock
+    TIM2->PSC = 16;             // Set prescaler for 1 kHz timer clock
     TIM2->DIER |= TIM_DIER_UIE; // Enable update interrupt
-
-
 }
 
 void ow_timer(uint16_t time)
-{   
+{
     TIM2->SR &= ~TIM_SR_UIF; // Clear the interrupt flag
-    TIM2->CR1 &= ~ TIM_CR1_CEN; //disable timer
 
-    TIM2->ARR = time;    
+    TIM2->ARR = time; // delay time
 
-    TIM2->CR1 |= TIM_CR1_CEN; //enable timer 
-    while(!(TIM2->SR & TIM_SR_UIF)) // wait for interrupt flag 
+    TIM2->CR1 |= TIM_CR1_CEN;        // enable timer
+    while (!(TIM2->SR & TIM_SR_UIF)) // wait for interrupt flag
     {
-       
     }
+    TIM2->CR1 &= ~TIM_CR1_CEN; // disable timer
+}
+
+void ow_strong_pullup(void)
+{
+    GPIOB->OTYPER &= ~GPIO_OTYPER_OT_13;
+    pull_up;
+}
+
+void ow_disable_pullup(void)
+{
+    GPIOB->OTYPER |= GPIO_OTYPER_OT_13;
 }
 
 void ow_reset(void)
@@ -64,56 +67,77 @@ void ow_reset(void)
     ow_timer(240);
 }
 
+void ow_write_bit(uint8_t bit)
+{
+    if (bit)
+    {
+        pull_down;
+        ow_timer(5); // Write 1 Pull low for 5 µs
+        pull_up;
+        ow_timer(55); // Release for remainder of time slot
+    }
+    else
+    {
+        pull_down;
+        ow_timer(60); // Write `0`: Pull low for 60 µs
+        pull_up;
+    }
+    ow_timer(10);
+}
+
 void ow_send_byte(uint8_t buffer)
 {
     for (uint8_t i = 0; i < 8; i++)
     {
-
-        if (buffer & 0x80) // masks 8 bit
-        {
-            pull_down;
-            ow_timer(5);
-            pull_up;
-            ow_timer(55);
-        }
-        else
-        {
-            pull_down;
-            ow_timer(60);
-            pull_up;
-        }
-
-        buffer <<= 1;
-        ow_timer(10);// delay (test) for next bit
+        ow_write_bit(buffer & 0x01); // Write LSB first
+        buffer >>= 1;
     }
-    ow_timer(100);
 }
 
+uint8_t ow_read_bit(void)
+{
+    uint8_t bit;
+
+    pull_down;
+    ow_timer(2); // Initiate read slot: Pull low for 2 µs
+    pull_up;
+    ow_timer(13); // Wait 13 µs before reading
+
+    if ((GPIOB->IDR & GPIO_IDR_ID13)) // Read bit value
+    {
+        bit = 1;
+    }
+    else
+    {
+        bit = 0;
+    }
+    ow_timer(45); // Wait for remainder of time slot
+
+    return bit;
+}
 
 uint8_t ow_read_byte(void)
 {
-    uint8_t buffer = 0;
+    uint8_t byte = 0;
 
     for (uint8_t i = 0; i < 8; i++)
     {
-
-        pull_down;
-        // delay 15us <- read anfordern
-        pull_up;
-        // delay 20us <- Abtastung von IDR
-        if ((GPIOB->IDR & GPIO_IDR_ID13))
+        byte >>= 1;
+        if (ow_read_bit())
         {
-            buffer |= 1;
+            byte |= 0x80; // Set MSB if bit is 1
         }
-        buffer <<= 1;
-        //delay 10us <- read cycle completion 
     }
+
+    return byte;
 }
 
-
-void ow_strong_pullup(void)
+// Utility function for sending a command buffer
+void ow_read_buffer(uint8_t *buf, uint8_t size)
 {
-
-
-
+    for (uint8_t i = 0; i < size; i++)
+    {
+        *buf = ow_read_byte();
+        buf++;
+    }
 }

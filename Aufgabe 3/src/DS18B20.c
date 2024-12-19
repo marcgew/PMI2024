@@ -4,38 +4,38 @@
 #include <stdio.h>
 #include <ow.h>
 #include <DS18B20.h>
+#include <systick.h>    
 
-
-void DS18B20_config(void)
+void DS18B20_init(void)
 {
-
-    ow_reset();
-    //wait for presence pulse
-    ow_send_byte(0xCC); //skip rom
-    ow_send_byte(0x4E); // write Scratchpad 
-    
-    
+ 
+    ow_init();
+    ow_tim_init();
 
 
 }
 
-void DS18B20_read(void)
+
+uint32_t DS18B20_get_temp(void)
 {
+       
     ow_reset();
-    //wait for presence pulse
-    ow_send_byte(0xCC); //skip rom
-    ow_send_byte(0b01000100); 
-
-   // ow_reset();
-    //ow_send_byte(0xCC);
-   // ow_send_byte(0xBE); // read Scratchpad 
-
-    //Read 9Bits //
-
-    //strong pullup 10ms 
+    ow_send_byte(DS_SKIPROM);
+    ow_send_byte(DS_CONVERT_T); 
+    ow_strong_pullup(); 
+    systick_delay_ms(750); // wait for conversion of Temperature
+    ow_disable_pullup();
 
 
+    ow_reset();
+    ow_send_byte(DS_SKIPROM);
+    ow_send_byte(DS_READ_SCRATCHPAD);  
 
+    uint8_t read_data[9] = {0};
+    ow_read_buffer(read_data,9);
+    int16_t raw_temp = (int16_t)(read_data[1] << 8 | read_data[0]);
+    uint32_t final_temp = ((float)raw_temp / 16.0) + 273.15; // Temperature to Kelvin
 
+    return final_temp;
 
 }
