@@ -7,6 +7,8 @@
 #include <pmi_string.h>
 #include <i2c_sw.h>
 #include <QMC5883L.h>
+#include <ow.h> 
+#include <DS18B20.h>
 
 int main(void)
 {
@@ -14,8 +16,9 @@ int main(void)
   clocks_init_pmi();
   uart_init_nucusb(115200);
   ili9341_init(0);
-  i2c_sw_init();
-  qmc5883l_init();
+
+  ow_init();
+  ow_tim_init();
 
   float x_float = 0;
   float y_float = 0;
@@ -23,17 +26,23 @@ int main(void)
   char x_str[10];
   char y_str[10];
   char z_str[10];
+  /*
   ili9341_text_pos_set(1, 2);
   ili9341_str_print("QMC5883L-X:", ILI9341_COLOR_RED, ILI9341_COLOR_BLACK);
   ili9341_text_pos_set(1, 5);
   ili9341_str_print("QMC5883L-Y:", ILI9341_COLOR_YELLOW, ILI9341_COLOR_BLACK);
   ili9341_text_pos_set(1, 8);
   ili9341_str_print("QMC5883L-Z:", ILI9341_COLOR_DARKCYAN, ILI9341_COLOR_BLACK);
+  */ 
 
   while (1)
-  {
+  { 
+    //ow_reset();
+    DS18B20_read();
 
-    qmc5883l_mag_get(&x_float, &y_float, &z_float);
+    systick_delay_ms(100);
+
+    /*
 
     pmi_string_float2str(x_str, 10, x_float, 7);
     pmi_string_float2str(y_str, 10, y_float, 7);
@@ -61,5 +70,7 @@ int main(void)
     ili9341_str_print("T", ILI9341_COLOR_WHITE, ILI9341_COLOR_BLACK);
 
     systick_delay_ms(100);
+
+    */
   }
 }
