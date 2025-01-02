@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.embeddedhtml": "html",
+        "adxl345.h": "c"
+    }
+}

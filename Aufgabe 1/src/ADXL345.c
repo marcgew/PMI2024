@@ -10,7 +10,8 @@
  */
 void ADXL345_measure_init(void)
 {
-
+    spi_init_adxl345();
+    
     // Initialize measurement mode for ADXL345
     int8_t init_buffer[2] = {ADXL345_POWER_CTL, MSR_BIT};
     spi_txrx(init_buffer, 2);
