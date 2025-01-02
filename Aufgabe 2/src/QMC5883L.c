@@ -15,7 +15,7 @@
  */
 int32_t qmc5883l_init(void)
 {
-
+    i2c_sw_init();
     i2c_configure(QMC5883L_ADDR, QMC5883L_REG_SET_RESET, 0x01);      // enable reset behaviour
     i2c_configure(QMC5883L_ADDR, QMC5883L_REG_CONTROL1, 0x1D);       // continuous measurement mode
     i2c_configure(QMC5883L_ADDR, QMC5883L_REG_CONTROL2, 0b01000000); // default config

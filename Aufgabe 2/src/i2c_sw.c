@@ -44,7 +44,6 @@ void delay_func(void)
 void i2c_start_communication(void)
 {
     SCL_HIGH;
-    delay_func();
     SDA_HIGH;
     delay_func();
     SDA_LOW;
@@ -66,6 +65,18 @@ void i2c_stop_communication(void)
     SCL_HIGH;
     delay_func();
     SDA_HIGH;
+}
+
+/**
+ * @brief Pulses the SCL line (SCL High -> SCL Low)
+ */
+void pulse_scl(void)
+{
+    SCL_HIGH;
+    delay_func();
+
+    SCL_LOW;
+    delay_func();
 }
 
 /**
@@ -91,22 +102,13 @@ int32_t i2c_send_byte(uint8_t buffer)
         }
 
         delay_func();
-
-        SCL_HIGH;
-        delay_func();
-
-        SCL_LOW;
-        delay_func();
+        pulse_scl();
     }
 
     SDA_HIGH; // Release SDA for ACK
     delay_func();
 
-    SCL_HIGH;
-    delay_func();
-
-    SCL_LOW;
-    delay_func();
+    pulse_scl();
 
     int ack = !(GPIOB->IDR & GPIO_IDR_ID9); // Read ACK (low = ACK)
 
@@ -134,9 +136,11 @@ int32_t i2c_recieve_byte(uint8_t ack_bit)
 
     for (uint8_t i = 0; i < 8; i++)
     {
-        buffer <<= 1;
+
         SCL_HIGH;
         delay_func();
+
+        buffer <<= 1;
 
         if ((GPIOB->IDR & GPIO_IDR_ID9))
         {
@@ -157,9 +161,7 @@ int32_t i2c_recieve_byte(uint8_t ack_bit)
         SDA_HIGH; // Send NACK
     }
 
-    SCL_HIGH;
-    delay_func();
-    SCL_LOW;
+    pulse_scl();
 
     return buffer;
 }
@@ -194,11 +196,19 @@ uint8_t i2c_recieve_data(uint8_t dev_add, uint8_t reg_add)
 {
     uint8_t BUF;
     i2c_start_communication();
-    i2c_send_byte(dev_add);
-    i2c_send_byte(reg_add);
-    i2c_start_communication();
-    i2c_send_byte(dev_add | 0x01);
-    BUF = i2c_recieve_byte(1);
+
+    i2c_send_byte(dev_add); // Send device address (write)
+
+    i2c_send_byte(reg_add); // Send register address
+
+    i2c_stop_communication();
+
+    i2c_start_communication(); // Repeated start for reading
+
+    i2c_send_byte(dev_add | 0x01); // Send device address  1 for read
+
+    BUF = i2c_recieve_byte(1); // Receive byte
+
     i2c_stop_communication();
     return BUF;
 }

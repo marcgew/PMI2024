@@ -1,7 +1,5 @@
 #include <uart.h>
 #include <clocks.h>
-#include <spi.h>
-#include <ADXL345.h>
 #include <systick.h>
 #include <ili9341.h>
 #include <pmi_string.h>
@@ -10,11 +8,10 @@
 
 int main(void)
 {
-  // Call your initialisations here
+
   clocks_init_pmi();
   uart_init_nucusb(115200);
   ili9341_init(0);
-  i2c_sw_init();
   qmc5883l_init();
 
   float x_float = 0;
