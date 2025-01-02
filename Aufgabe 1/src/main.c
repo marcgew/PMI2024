@@ -14,18 +14,7 @@ int main(void)
     ili9341_init(0);
     ADXL345_measure_init();
 
-    float x_float = 0;
-    float y_float = 0;
-    float z_float = 0;
-    char x_str[7];
-    char y_str[7];
-    char z_str[7];
-    ili9341_text_pos_set(1, 2);
-    ili9341_str_print("ADXL345-X:", ILI9341_COLOR_RED, ILI9341_COLOR_BLACK);
-    ili9341_text_pos_set(1, 5);
-    ili9341_str_print("ADXL345-Y:", ILI9341_COLOR_YELLOW, ILI9341_COLOR_BLACK);
-    ili9341_text_pos_set(1, 8);
-    ili9341_str_print("ADXL345-Z:", ILI9341_COLOR_DARKCYAN, ILI9341_COLOR_BLACK);
+   
 
     
 
