@@ -1,18 +1,14 @@
 #include <uart.h>
 #include <clocks.h>
-#include <spi.h>
-#include <ADXL345.h>
 #include <systick.h>
 #include <ili9341.h>
 #include <pmi_string.h>
-#include <i2c_sw.h>
-#include <QMC5883L.h>
 #include <ow.h> 
 #include <DS18B20.h>
 
 int main(void)
 {
-  // Call your initialisations here
+  
   clocks_init_pmi();
   uart_init_nucusb(115200);
   ili9341_init(0);
