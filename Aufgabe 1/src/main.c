@@ -8,7 +8,6 @@
 
 int main(void)
 {
-    /* Call your initialisations here */
     clocks_init_pmi();
     uart_init_nucusb(115200);
     spi_init_adxl345();

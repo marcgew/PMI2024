@@ -5,7 +5,6 @@
 #include <spi.h>
 #include <ADXL345.h>
 
-
 /**
  * @brief Initialize the ADXL345 accelerometer for measurement mode
  */
