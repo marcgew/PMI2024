@@ -14,7 +14,7 @@ int main(void)
     ili9341_init(0);
     ADXL345_measure_init();
 
-     float x_float = 0;
+    float x_float = 0;
     float y_float = 0;
     float z_float = 0;
     char x_str[10];
@@ -30,9 +30,24 @@ int main(void)
 
     while (1)
     {
+    
+    ADXL345_collect_data(&x_float, &y_float, &z_float);
 
-        ADXL345_collect_data(&x_float, &y_float, &z_float);
+        //Error-Mode if connection is lost
+        if (x_float == 0.0f && y_float == 0.0f && z_float == 0.0f)
+        {
+            ili9341_text_pos_set(1, 11);
+            ili9341_str_print("Sensor error, reinit", ILI9341_COLOR_RED, ILI9341_COLOR_BLACK);
 
+            ADXL345_measure_init();
+            systick_delay_ms(50);
+            ili9341_text_pos_set(1, 11);
+            ili9341_str_clear(16, ILI9341_COLOR_BLACK);
+            ili9341_text_pos_set(0, 12);
+            ili9341_str_clear(4, ILI9341_COLOR_BLACK);
+            continue;               // restart the while-loop
+        }
+        
         pmi_string_float2str(x_str, 7, x_float, 7);
         pmi_string_float2str(y_str, 7, y_float, 7);
         pmi_string_float2str(z_str, 7, z_float, 7);
