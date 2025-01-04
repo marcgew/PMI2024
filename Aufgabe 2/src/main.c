@@ -29,7 +29,7 @@ int main(void)
 
   while (1)
   {
-
+    qmc5883l_init();
     qmc5883l_mag_get(&x_float, &y_float, &z_float);
 
     pmi_string_float2str(x_str, 10, x_float, 7);
