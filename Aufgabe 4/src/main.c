@@ -26,6 +26,9 @@ int main(void)
 
   while (1)
   {
+    //reinitialize ADXL and QMC in case they are disconnected
+    ADXL345_measure_init();
+    qmc5883l_init();
 
     draw_values(); // Fetch sensor data and update their respective values on the display
 
