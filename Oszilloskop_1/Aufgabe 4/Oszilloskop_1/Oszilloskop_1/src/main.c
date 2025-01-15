@@ -265,12 +265,12 @@ void draw_funciton(void)
     if ((middle_id-120)<0)
     {
       iterator = middle_id+120;
-      upper_limit = 240- middle_id+120;
+      upper_limit = 240-iterator;
     } 
     else
     {
       iterator = middle_id-120;
-      upper_limit =
+      upper_limit = 240-iterator;
     }
     
     for (uint8_t i = 0; i < upper_limit; i++)
@@ -278,6 +278,15 @@ void draw_funciton(void)
       ili9341_pixel_set(i, 150 - ((ring_buffer[iterator]) / 64), ILI9341_COLOR_BLACK);
       ili9341_pixel_set(i, 149 - ((ring_buffer[iterator]) / 64), ILI9341_COLOR_BLACK);
       iterator +=1;
+    }
+      iterator = 0;
+    
+    for (uint8_t i = upper_limit; i < 240; i++)
+    {
+  
+        ili9341_pixel_set(i, 150 - ((ring_buffer[iterator]) / 64), ILI9341_COLOR_BLACK);
+        ili9341_pixel_set(i, 149 - ((ring_buffer[iterator]) / 64), ILI9341_COLOR_BLACK);
+        iterator +=1;
     }
       zoom_function();
       draw_variable = 0;
