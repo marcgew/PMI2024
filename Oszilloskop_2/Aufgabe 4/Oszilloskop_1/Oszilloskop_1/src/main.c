@@ -62,28 +62,6 @@ void OSC_ADC_init(void)
   }
 }
 
-void OSC_tim6_init(void)
-{
-  // Reset TIM6 peripheral
-  RCC->APB1RSTR |= RCC_APB1RSTR_TIM6RST;
-  RCC->APB1RSTR &= ~RCC_APB1RSTR_TIM6RST;
-
-  // Enable the TIM6 clock
-  RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
-
-  TIM6->PSC = 16000 - 1;      // Set prescaler for 1 kHz timer clock
-  TIM6->ARR = 59 - 1;         //  auf 60ms stellen (16.6 Hz) also 17 Hz
-  TIM6->DIER |= TIM_DIER_UIE; // Enable update interrupt
-
-  // Configure NVIC for TIM6 interrupts
-  NVIC_ClearPendingIRQ(TIM6_IRQn);
-  NVIC_SetPriority(TIM6_IRQn, 1); // Set interrupt priority
-  NVIC_EnableIRQ(TIM6_IRQn);
-
-  // Enable the timer
-  TIM6->CR1 |= TIM_CR1_CEN;
-}
-
 void OSC_tim2_init(void)
 {
   // Reset TIM2 peripheral
@@ -172,16 +150,6 @@ void EXTI2_3_IRQHandler(void)
   EXTI->PR = EXTI_PR_PIF2; // Clear pending interrupt flag on line 2
 }
 
-void TIM6_DAC_IRQHandler(void)
-{
-  if (TIM6->SR & TIM_SR_UIF) // Check if update interrupt flag is set
-  {
-    GPIOC->ODR ^= GPIO_ODR_OD4;
-    GPIOC->ODR ^= GPIO_ODR_OD8;
-  }
-  TIM6->SR &= ~TIM_SR_UIF; // Clear the interrupt flag
-}
-
 void TIM2_IRQHandler(void)
 {
   if (TIM2->SR & TIM_SR_UIF) // Check if update interrupt flag is set
@@ -199,11 +167,23 @@ void TIM2_IRQHandler(void)
       ring_buffer[ring_counter] = ADC1->DR;
       measure_count += 1;
 
+      if (ring_buffer[ring_counter] <= 1024)
+      {
+        GPIOC->ODR |= GPIO_ODR_OD4;
+        GPIOC->ODR |= GPIO_ODR_OD8;
+      }
+
+      if (ring_buffer[ring_counter] >= 3071)
+      {
+        GPIOC->ODR &= ~GPIO_ODR_OD4;
+        GPIOC->ODR &= ~GPIO_ODR_OD8;
+      }
+
       if (measure_count >= 120)
       {
-        if (ring_counter == 0)
+        if (ring_counter == 0) // from here
         {
-          if ((ring_buffer[239] < 4095) && (ring_buffer[0] >= 4095) && falling_detect == 0)
+          if ((ring_buffer[0] >= 3071) && (ring_buffer[239] < 3071) && falling_detect == 0)
           {
             falling_detect = 1;
             max_value = 240;
@@ -211,7 +191,7 @@ void TIM2_IRQHandler(void)
         }
         else
         {
-          if ((ring_buffer[ring_counter] < 4095) && (ring_buffer[ring_counter - 1] >= 4095) && falling_detect == 0)
+          if ((ring_buffer[ring_counter] < 3071) && (ring_buffer[ring_counter - 1] >= 3071) && falling_detect == 0)
           {
             falling_detect = 1;
             max_value = (ring_counter - 1);
@@ -220,7 +200,7 @@ void TIM2_IRQHandler(void)
 
         if (ring_counter == 0)
         {
-          if (falling_detect == 1 && (ring_buffer[239] < 2048) && (ring_buffer[0] >= 2048) && start_countdown == 0)
+          if (falling_detect == 1 && (ring_buffer[0] >= 2048) && (ring_buffer[239] < 2048) && start_countdown == 0)
           {
             start_countdown = 1;
             middle_id = 0;
@@ -232,23 +212,6 @@ void TIM2_IRQHandler(void)
           {
             start_countdown = 1;
             middle_id = ring_counter;
-          }
-        }
-
-        if (ring_counter == 0)
-        {
-          if (falling_detect == 1 && (ring_buffer[239] < 1506) && (ring_buffer[0] >= 1506) && RC_timing == 0)
-          {
-            RC_timing = 1;
-            RC_Id = 0;
-          }
-        }
-        else
-        {
-          if (falling_detect == 1 && (ring_buffer[ring_counter] < 1506) && (ring_buffer[ring_counter - 1] >= 1506) && RC_timing == 0)
-          {
-            RC_timing = 1;
-            RC_Id = ring_counter;
           }
         }
       }
@@ -265,15 +228,42 @@ void TIM2_IRQHandler(void)
         }
       }
 
-      ring_counter = (ring_counter += 1) % 240;
+      ring_counter = ((ring_counter += 1) % 240);
     }
   }
 
   TIM2->SR &= ~TIM_SR_UIF; // Clear the interrupt flag
 }
+
 uint8_t iterator = 0;
 uint8_t upper_limit = 0;
-uint16_t top_marker;
+uint8_t rising_marker1 = 0;
+uint8_t rising_marker2 = 0;
+uint8_t rising_counter = 0;
+uint16_t rising_value = 0;
+uint16_t period_count = 0;
+
+void average_period(void)
+{
+  rising_marker2 = rising_marker1;
+  rising_marker1 = iterator;
+  rising_counter += 1;
+
+  if (rising_counter >= 2)
+  {
+    if (rising_marker1 - rising_marker2 < 0)
+    {
+      rising_value += (rising_marker1 + 240 - rising_marker2);
+      period_count += 1;
+    }
+    else
+    {
+
+      rising_value += (rising_marker1 - rising_marker2);
+      period_count += 1;
+    }
+  }
+}
 
 void draw_funciton(void)
 {
@@ -283,6 +273,7 @@ void draw_funciton(void)
     GPIOC->ODR |= GPIO_ODR_OD6;
 
     ili9341_rect_fill(0, 55, 240, 100, ILI9341_COLOR_WHITE);
+
     if ((middle_id - 120) < 0)
     {
       iterator = middle_id + 120;
@@ -296,6 +287,23 @@ void draw_funciton(void)
 
     for (uint8_t i = 0; i < upper_limit; i++)
     {
+      if (iterator == 0)
+      {
+        if (ring_buffer[0] >= 2048 && ring_buffer[239] < 2048)
+        {
+          ili9341_line_draw(0, 80, 0, 140, ILI9341_COLOR_RED);
+          average_period();
+        }
+      }
+      else
+      {
+        if (ring_buffer[iterator] >= 2048 && ring_buffer[iterator - 1] < 2048)
+        {
+          ili9341_line_draw(i, 80, i, 140, ILI9341_COLOR_RED);
+          average_period();
+        }
+      }
+
       ili9341_pixel_set(i, 150 - ((ring_buffer[iterator]) / 65), ILI9341_COLOR_BLACK);
       ili9341_pixel_set(i, 149 - ((ring_buffer[iterator]) / 65), ILI9341_COLOR_BLACK);
       iterator += 1;
@@ -305,13 +313,30 @@ void draw_funciton(void)
     for (uint8_t i = upper_limit; i < 240; i++)
     {
 
+      if (iterator == 0)
+      {
+        if (ring_buffer[0] >= 2048 && ring_buffer[239] < 2048)
+        {
+          ili9341_line_draw(0, 80, 0, 140, ILI9341_COLOR_RED);
+          average_period();
+        }
+      }
+      else
+      {
+        if (ring_buffer[iterator] >= 2048 && ring_buffer[iterator - 1] < 2048)
+        {
+          ili9341_line_draw(i, 80, i, 140, ILI9341_COLOR_RED);
+          average_period();
+        }
+      }
+
       ili9341_pixel_set(i, 150 - ((ring_buffer[iterator]) / 65), ILI9341_COLOR_BLACK);
       ili9341_pixel_set(i, 149 - ((ring_buffer[iterator]) / 65), ILI9341_COLOR_BLACK);
       iterator += 1;
     }
 
     GPIOC->ODR &= ~(GPIO_ODR_OD6);
-    draw_marker();
+
     display_logic();
     zoom_function();
 
@@ -320,6 +345,9 @@ void draw_funciton(void)
     start_countdown = 0;
     RC_timing = 0;
     measure_count = 0;
+    rising_counter = 0;
+    rising_value = 0;
+    period_count = 0;
     treshhold_counter = 120;
   }
   else if (draw_variable == 1)
@@ -359,26 +387,6 @@ void zoom_function(void)
   {
     TIM2->ARR = 100;
   }
-}
-uint8_t max_marker_position;
-uint8_t tau_marker_position;
-void draw_marker(void)
-{
-
-  if (max_value >= iterator)
-  {
-    max_marker_position = max_value - iterator;
-    tau_marker_position = RC_Id - iterator;
-  }
-  else
-  {
-    max_marker_position = 240 - iterator + max_value;
-    tau_marker_position = 240 - iterator + RC_Id;
-  }
-
-  ili9341_line_draw(max_marker_position, 80, max_marker_position, 140, ILI9341_COLOR_RED);
-  ili9341_line_draw(tau_marker_position, 80, tau_marker_position, 140, ILI9341_COLOR_BLUE);
-  
 }
 
 void calc_avg(void)
@@ -431,43 +439,35 @@ void calc_peaktopeak(void)
   ili9341_str_print(ptp_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
-void calc_RC_C(void)
+void period_avg(void)
 {
-  float RC_value; //RC_value and C_value are the same
-  
-  char RC_str[8];
-  if ((RC_Id-max_value)>0)
-  {
-    RC_value=(float)(100*(1<<zoom_pos)  * (RC_Id - max_value));
-  }
-  else
-  {
-    RC_value =(float)(100*(1<<zoom_pos)  *(RC_Id + 240 - max_value));
-  }
+  float period_value = 0;
 
-  pmi_string_float2str(RC_str, 8, RC_value, 8);
-  
+  char period_str[8];
+  period_value = rising_value / period_count;
+
+  pmi_string_float2str(period_str, 8, period_value, 8);
+
   ili9341_text_pos_set(5, 9);
   ili9341_str_clear(6, ILI9341_COLOR_WHITE);
   ili9341_text_pos_set(5, 9);
-  ili9341_str_print(RC_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+  ili9341_str_print(period_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 
   ili9341_text_pos_set(5, 10);
   ili9341_str_clear(6, ILI9341_COLOR_WHITE);
   ili9341_text_pos_set(5, 10);
-  ili9341_str_print(RC_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-
-  
+  ili9341_str_print(period_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
 void display_logic(void)
 {
   calc_avg();
   calc_peaktopeak();
-  calc_RC_C();
+  period_avg();
 
   if (zoom_pos == 0)
-  { ili9341_text_pos_set(6, 11);
+  {
+    ili9341_text_pos_set(6, 11);
     ili9341_str_clear(6, ILI9341_COLOR_WHITE);
     ili9341_text_pos_set(6, 11);
     ili9341_str_print("24 ms", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
@@ -478,32 +478,33 @@ void display_logic(void)
     ili9341_str_print("4x", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
   }
 
-    if (zoom_pos == 1)
-  { 
-     ili9341_text_pos_set(6, 11);
+  if (zoom_pos == 1)
+  {
+    ili9341_text_pos_set(6, 11);
     ili9341_str_clear(6, ILI9341_COLOR_WHITE);
     ili9341_text_pos_set(6, 11);
     ili9341_str_print("48 ms", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-    
+
     ili9341_text_pos_set(6, 12);
     ili9341_str_clear(6, ILI9341_COLOR_WHITE);
     ili9341_text_pos_set(6, 12);
     ili9341_str_print("2x", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
   }
 
-    if (zoom_pos == 2)
-  {  ili9341_text_pos_set(6, 11);
+  if (zoom_pos == 2)
+  {
+    ili9341_text_pos_set(6, 11);
     ili9341_str_clear(6, ILI9341_COLOR_WHITE);
     ili9341_text_pos_set(6, 11);
     ili9341_str_print("96 ms", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-    
+
     ili9341_text_pos_set(6, 12);
     ili9341_str_clear(6, ILI9341_COLOR_WHITE);
     ili9341_text_pos_set(6, 12);
     ili9341_str_print("1x", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
   }
 
-    if (zoom_pos == 3)
+  if (zoom_pos == 3)
   {
     ili9341_text_pos_set(6, 11);
     ili9341_str_clear(6, ILI9341_COLOR_WHITE);
@@ -515,14 +516,14 @@ void display_logic(void)
     ili9341_text_pos_set(6, 12);
     ili9341_str_print("0.5x", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
   }
-    if (zoom_pos == 4)
+  if (zoom_pos == 4)
   {
-    
+
     ili9341_text_pos_set(6, 11);
     ili9341_str_clear(6, ILI9341_COLOR_WHITE);
     ili9341_text_pos_set(6, 11);
     ili9341_str_print("384 ms", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-    
+
     ili9341_text_pos_set(6, 12);
     ili9341_str_clear(6, ILI9341_COLOR_WHITE);
     ili9341_text_pos_set(6, 12);
@@ -536,14 +537,11 @@ void display_return(void)
   ili9341_text_pos_set(2, 1);
   ili9341_str_print("OSCILLOSCOPE", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 
-
   ili9341_text_pos_set(1, 7);
   ili9341_str_print("AVG:", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 
-
   ili9341_text_pos_set(13, 7);
   ili9341_str_print("mV", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-
 
   ili9341_text_pos_set(1, 8);
   ili9341_str_print("P-P:", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
@@ -556,21 +554,17 @@ void display_return(void)
   ili9341_text_pos_set(1, 9);
   ili9341_str_print("RC:", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 
-
-  ili9341_text_pos_set(13,9);
+  ili9341_text_pos_set(13, 9);
   ili9341_str_print("us", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 
   ili9341_text_pos_set(1, 10);
   ili9341_str_print("C:", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-  
-  
-    ili9341_text_pos_set(13,10);
-  ili9341_str_print("nF", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 
+  ili9341_text_pos_set(13, 10);
+  ili9341_str_print("nF", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 
   ili9341_text_pos_set(1, 11);
   ili9341_str_print("Span:", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
-
 
   ili9341_text_pos_set(1, 12);
   ili9341_str_print("Zoom:", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
@@ -583,17 +577,18 @@ int main(void)
 
   OSC_gpio_init();
   OSC_ADC_init();
-  OSC_tim6_init();
   OSC_tim2_init();
   ili9341_init(0);
   EXTI_init();
 
   ili9341_rect_fill(0, 0, 240, 320, ILI9341_COLOR_WHITE);
   display_return();
+
   {
 
     while (1)
     {
+
       draw_funciton();
     }
   }
