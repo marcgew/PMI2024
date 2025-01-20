@@ -450,7 +450,7 @@ void period_avg(void)
 
   period_value = (float)(0.1 * (1 << zoom_pos) * (rising_value / period_count));
 
-  C_value = (float)(period_value/27.72);
+  C_value = (float)(period_value/0.002772);
 
   pmi_string_float2str(period_str, 5, period_value, 5);
   pmi_string_float2str(C_str, 5, C_value, 5);
