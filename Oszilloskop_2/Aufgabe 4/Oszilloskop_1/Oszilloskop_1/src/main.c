@@ -442,21 +442,39 @@ void calc_peaktopeak(void)
 void period_avg(void)
 {
   float period_value = 0;
+  float C_value = 0;
 
-  char period_str[8];
-  period_value = rising_value / period_count;
+  char period_str[5];
+  char C_str[5];
 
-  pmi_string_float2str(period_str, 8, period_value, 8);
 
-  ili9341_text_pos_set(5, 9);
-  ili9341_str_clear(6, ILI9341_COLOR_WHITE);
-  ili9341_text_pos_set(5, 9);
-  ili9341_str_print(period_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+  period_value = (float)(0.1 * (1 << zoom_pos) * (rising_value / period_count));
 
-  ili9341_text_pos_set(5, 10);
-  ili9341_str_clear(6, ILI9341_COLOR_WHITE);
-  ili9341_text_pos_set(5, 10);
-  ili9341_str_print(period_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+  C_value = (float)(period_value/27.72);
+
+  pmi_string_float2str(period_str, 5, period_value, 5);
+  pmi_string_float2str(C_str, 5, C_value, 5);
+
+  if (period_value == 0)
+  {
+    ili9341_text_pos_set(8, 9);
+    ili9341_str_clear(5, ILI9341_COLOR_WHITE);
+    ili9341_text_pos_set(8, 9);
+    ili9341_str_print("ZOOM!", ILI9341_COLOR_RED, ILI9341_COLOR_WHITE);
+  }
+  else
+  { 
+
+    ili9341_text_pos_set(8, 9);
+    ili9341_str_clear(5, ILI9341_COLOR_WHITE);
+    ili9341_text_pos_set(8, 9);
+    ili9341_str_print(period_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+
+    ili9341_text_pos_set(8, 10);
+    ili9341_str_clear(5, ILI9341_COLOR_WHITE);
+    ili9341_text_pos_set(8, 10);
+    ili9341_str_print(C_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+  }
 }
 
 void display_logic(void)
@@ -552,10 +570,10 @@ void display_return(void)
   ili9341_text_pos_set(1, 9);
 
   ili9341_text_pos_set(1, 9);
-  ili9341_str_print("RC:", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+  ili9341_str_print("Period:", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 
   ili9341_text_pos_set(13, 9);
-  ili9341_str_print("us", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+  ili9341_str_print("ms", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 
   ili9341_text_pos_set(1, 10);
   ili9341_str_print("C:", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);

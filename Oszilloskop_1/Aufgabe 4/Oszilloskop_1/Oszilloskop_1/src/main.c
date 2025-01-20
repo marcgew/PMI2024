@@ -203,7 +203,7 @@ void TIM2_IRQHandler(void)
       {
         if (ring_counter == 0)
         {
-          if ((ring_buffer[239] < 4095) && (ring_buffer[0] >= 4095) && falling_detect == 0)
+          if ((ring_buffer[239] >= 4095) && (ring_buffer[0] < 4095) && falling_detect == 0)
           {
             falling_detect = 1;
             max_value = 240;
@@ -220,7 +220,7 @@ void TIM2_IRQHandler(void)
 
         if (ring_counter == 0)
         {
-          if (falling_detect == 1 && (ring_buffer[239] < 2048) && (ring_buffer[0] >= 2048) && start_countdown == 0)
+          if (falling_detect == 1 && (ring_buffer[239] >= 2048) && (ring_buffer[0] < 2048) && start_countdown == 0)
           {
             start_countdown = 1;
             middle_id = 0;
@@ -237,7 +237,7 @@ void TIM2_IRQHandler(void)
 
         if (ring_counter == 0)
         {
-          if (falling_detect == 1 && (ring_buffer[239] < 1506) && (ring_buffer[0] >= 1506) && RC_timing == 0)
+          if (falling_detect == 1 && (ring_buffer[239] >= 1506) && (ring_buffer[0] < 1506) && RC_timing == 0)
           {
             RC_timing = 1;
             RC_Id = 0;
