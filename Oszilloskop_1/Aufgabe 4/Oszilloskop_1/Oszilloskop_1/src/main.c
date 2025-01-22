@@ -431,9 +431,10 @@ void calc_peaktopeak(void)
   ili9341_str_print(ptp_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
+float RC_value; //RC_value and C_value are the same
 void calc_RC_C(void)
 {
-  float RC_value; //RC_value and C_value are the same
+  RC_value = 0; //RC_value and C_value are the same
   
   char RC_str[8];
   if ((RC_Id-max_value)>0)
@@ -527,6 +528,19 @@ void display_logic(void)
     ili9341_str_clear(6, ILI9341_COLOR_WHITE);
     ili9341_text_pos_set(6, 12);
     ili9341_str_print("0.25x", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
+  }
+  uint16_t no_jumper = 0;
+  no_jumper = (RC_value / (1 << zoom_pos));
+
+  if (no_jumper == 100)
+  {
+    ili9341_rect_fill(0, 55, 240, 100, ILI9341_COLOR_WHITE);
+    ili9341_text_pos_set(1, 3);
+    ili9341_str_print("Put that Jumper ", ILI9341_COLOR_RED, ILI9341_COLOR_WHITE);
+    ili9341_text_pos_set(3, 4);
+    ili9341_str_print("back! -.-", ILI9341_COLOR_RED, ILI9341_COLOR_WHITE);
+    systick_delay_ms(2000);
+    
   }
 }
 

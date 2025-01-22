@@ -5,6 +5,7 @@
 #include <ili9341.h>
 #include <pmi_string.h>
 #include <ow.h>
+#include <systick.h>
 
 volatile uint32_t ring_buffer[240];
 volatile uint8_t ring_counter = 0;
@@ -434,18 +435,20 @@ void calc_peaktopeak(void)
   pmi_string_float2str(ptp_str, 7, ptp, 7);
 
   ili9341_text_pos_set(6, 8);
-  ili9341_str_clear(6, ILI9341_COLOR_WHITE);
+  ili9341_str_clear(7, ILI9341_COLOR_WHITE);
   ili9341_text_pos_set(6, 8);
   ili9341_str_print(ptp_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
+float period_value = 0;
+
 void period_avg(void)
 {
-  float period_value = 0;
+  period_value = 0;
   float C_value = 0;
 
   char period_str[5];
-  char C_str[5];
+  char C_str[8];
 
 
   period_value = (float)(0.1 * (1 << zoom_pos) * (rising_value / period_count));
@@ -453,7 +456,7 @@ void period_avg(void)
   C_value = (float)(period_value/0.002772);
 
   pmi_string_float2str(period_str, 5, period_value, 5);
-  pmi_string_float2str(C_str, 5, C_value, 5);
+  pmi_string_float2str(C_str, 8, C_value, 8);
 
   if (period_value == 0)
   {
@@ -461,7 +464,13 @@ void period_avg(void)
     ili9341_str_clear(5, ILI9341_COLOR_WHITE);
     ili9341_text_pos_set(8, 9);
     ili9341_str_print("ZOOM!", ILI9341_COLOR_RED, ILI9341_COLOR_WHITE);
+     ili9341_text_pos_set(3,10);
+    ili9341_str_clear(9, ILI9341_COLOR_WHITE);
+    ili9341_text_pos_set(8,10);
+    ili9341_str_print("ZOOM!", ILI9341_COLOR_RED, ILI9341_COLOR_WHITE);
   }
+
+
   else
   { 
 
@@ -470,18 +479,25 @@ void period_avg(void)
     ili9341_text_pos_set(8, 9);
     ili9341_str_print(period_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 
-    ili9341_text_pos_set(8, 10);
-    ili9341_str_clear(5, ILI9341_COLOR_WHITE);
-    ili9341_text_pos_set(8, 10);
+    ili9341_text_pos_set(3, 10);
+    ili9341_str_clear(10, ILI9341_COLOR_WHITE);
+    ili9341_text_pos_set(5, 10);
     ili9341_str_print(C_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
   }
 }
 
 void display_logic(void)
-{
-  calc_avg();
-  calc_peaktopeak();
-  period_avg();
+{ 
+ 
+  
+    calc_avg();
+    calc_peaktopeak();
+    period_avg();
+  
+  
+ 
+  
+ 
 
   if (zoom_pos == 0)
   {
@@ -547,6 +563,20 @@ void display_logic(void)
     ili9341_text_pos_set(6, 12);
     ili9341_str_print("0.25x", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
   }
+   uint8_t no_jumper = 0;
+  no_jumper = (period_value / (1 << zoom_pos))*10;
+
+  if (no_jumper == 2)
+  {
+    ili9341_rect_fill(0, 55, 240, 100, ILI9341_COLOR_WHITE);
+    ili9341_text_pos_set(1, 3);
+    ili9341_str_print("Put that Jumper ", ILI9341_COLOR_RED, ILI9341_COLOR_WHITE);
+    ili9341_text_pos_set(3, 4);
+    ili9341_str_print("back! -.-", ILI9341_COLOR_RED, ILI9341_COLOR_WHITE);
+    systick_delay_ms(2000);
+    
+  }
+
 }
 
 void display_return(void)
@@ -587,6 +617,8 @@ void display_return(void)
   ili9341_text_pos_set(1, 12);
   ili9341_str_print("Zoom:", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
+
+
 
 int main(void)
 {
