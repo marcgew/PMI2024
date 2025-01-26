@@ -6,7 +6,10 @@
 #include <pmi_string.h>
 #include <ow.h>
 #include <systick.h>
-
+/** 
+ * Global Variables
+ * These variables are used for various states and calculations across the program.
+ */
 volatile uint32_t ring_buffer[240]; 
 volatile uint8_t ring_counter = 0; // count current loc in Ring Buffer
 volatile uint8_t falling_detect = 0; // check if in falling edge currently

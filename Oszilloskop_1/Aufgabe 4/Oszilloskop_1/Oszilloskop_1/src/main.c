@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <ili9341.h>
 #include <pmi_string.h>
+#include <systick.h>
 #include <ow.h>
 
 volatile uint32_t ring_buffer[240];
