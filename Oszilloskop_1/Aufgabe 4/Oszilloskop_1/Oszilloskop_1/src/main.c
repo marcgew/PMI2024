@@ -7,19 +7,24 @@
 #include <systick.h>
 #include <ow.h>
 
-volatile uint32_t ring_buffer[240];
-volatile uint8_t ring_counter = 0;
-volatile uint8_t falling_detect = 0;
-volatile uint8_t max_value = 0;
-volatile uint8_t middle_detect = 0;
-volatile uint8_t draw_variable = 0;
-volatile uint8_t start_countdown = 0;
-volatile uint8_t middle_id = 0;
+/** 
+ * Global Variables
+ * These variables are used for various states and calculations across the program.
+ */
+volatile uint32_t ring_buffer[240]; 
+volatile uint8_t ring_counter = 0; // count current loc in Ring Buffer
+volatile uint8_t falling_detect = 0; // check if in falling edge currently
+volatile uint8_t max_value = 0; 
+volatile uint8_t middle_detect = 0; // check if middle of discharge curve 
+volatile uint8_t draw_variable = 0; // check if we can draw currently
+volatile uint8_t start_countdown = 0; // check if we can count 120 after middle 
+volatile uint8_t middle_id = 0; // current pos of middle
 volatile uint8_t RC_timing = 0;
 volatile uint8_t RC_Id = 0;
-volatile uint8_t treshhold_counter = 120;
-volatile uint8_t zoom_pos = 2;
-uint32_t measure_count = 0;
+volatile uint8_t treshhold_counter = 120; // count down until 0 to check if we have over 240 sampels
+volatile uint8_t zoom_pos = 2; // current zoom pos 
+uint32_t measure_count = 0; 
+
 
 void OSC_gpio_init(void)
 {
@@ -32,7 +37,7 @@ void OSC_gpio_init(void)
   GPIOC->MODER &= ~(GPIO_MODER_MODE8_1); // Set PC8 pins as output (LED D1)
   GPIOC->MODER |= GPIO_MODER_MODE8_0;
 
-  GPIOC->MODER &= ~(GPIO_MODER_MODE6_1); // Set PC8 pins as output (LED D1)
+  GPIOC->MODER &= ~(GPIO_MODER_MODE6_1); // Set PC6 pins as output (LED D2)
   GPIOC->MODER |= GPIO_MODER_MODE6_0;
 
   // Configure PB1/PB2 as input for button with pull-up resistor
@@ -59,7 +64,7 @@ void OSC_ADC_init(void)
   ADC1->CR |= ADC_CR_ADEN; // Enable ADC
   while ((ADC1->ISR & ADC_ISR_ADRDY) == 0)
   {
-    /* For robust implementation, add here time-out management */
+    
   }
 }
 
@@ -73,7 +78,7 @@ void OSC_tim6_init(void)
   RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
 
   TIM6->PSC = 16000 - 1;      // Set prescaler for 1 kHz timer clock
-  TIM6->ARR = 59 - 1;         //  auf 60ms stellen (16.6 Hz) also 17 Hz
+  TIM6->ARR = 59 - 1;         // set to 17hz
   TIM6->DIER |= TIM_DIER_UIE; // Enable update interrupt
 
   // Configure NVIC for TIM6 interrupts
@@ -132,7 +137,7 @@ void EXTI_init()
 
 /**
  * @brief Handles external interrupt for EXTI lines 0-1
- *        Toggles the car_loop flag when button on PB1 is pressed
+ *        Decrease zoom_pos by 1 when button on PB1 is pressed
  */
 void EXTI0_1_IRQHandler(void)
 {
@@ -153,7 +158,7 @@ void EXTI0_1_IRQHandler(void)
 
 /**
  * @brief Handles external interrupt for EXTI lines 2-3
- *        Toggles the pedestrian_loop flag when button on PB2 is pressed
+ *        Increase zoom_pos by 1 when button on PB2 is pressed
  */
 void EXTI2_3_IRQHandler(void)
 {
@@ -173,6 +178,10 @@ void EXTI2_3_IRQHandler(void)
   EXTI->PR = EXTI_PR_PIF2; // Clear pending interrupt flag on line 2
 }
 
+/**
+ * @brief toggles PC4 every interrupt 
+ *        
+ */
 void TIM6_DAC_IRQHandler(void)
 {
   if (TIM6->SR & TIM_SR_UIF) // Check if update interrupt flag is set
@@ -183,108 +192,129 @@ void TIM6_DAC_IRQHandler(void)
   TIM6->SR &= ~TIM_SR_UIF; // Clear the interrupt flag
 }
 
+
+/**
+ * @brief  Manages ring_buffer and marks critical values on the charge curve,
+ *         Stops measurements when enough data has been collected
+ */
 void TIM2_IRQHandler(void)
 {
-  if (TIM2->SR & TIM_SR_UIF) // Check if update interrupt flag is set
+  // Check if the update interrupt flag is set
+  if (TIM2->SR & TIM_SR_UIF) 
   {
-    if (draw_variable == 0)
+    // Check if no drawing is currently happening
+    if (draw_variable == 0) 
     {
+      // Start the ADC measurement
+      ADC1->CR |= ADC_CR_ADSTART; 
 
-      ADC1->CR |= ADC_CR_ADSTART; // Start Measuring
-
-      while ((ADC1->ISR & ADC_ISR_EOC) == 0) /* wait end of conversion */
+      // Wait until the conversion is complete
+      while ((ADC1->ISR & ADC_ISR_EOC) == 0) 
       {
-        /* For robust implementation, add here time-out management */
+        // Wait for the ADC conversion to finish
       }
 
+      // Store the ADC result in the ring buffer
       ring_buffer[ring_counter] = ADC1->DR;
+      // Increment the measurement counter
       measure_count += 1;
 
-      if (measure_count >= 120)
+      // If 120 measurements have been collected, begin the analysis
+      if (measure_count >= 120) 
       {
-        if (ring_counter == 0)
+        // Handle the edge case when the ring buffer wraps around to 0
+        if (ring_counter == 0) 
         {
-          if ((ring_buffer[239] >= 4095) && (ring_buffer[0] < 4095) && falling_detect == 0)
+          // Check if a peak is detected
+          if ((ring_buffer[239] >= 4095) && (ring_buffer[0] < 4095) && falling_detect == 0) 
           {
-            falling_detect = 1;
-            max_value = 240;
+            falling_detect = 1;  // Peak detected
+            max_value = 240;     // Set the peak value
           }
         }
-        else
+        else 
         {
-          if ((ring_buffer[ring_counter] < 4095) && (ring_buffer[ring_counter - 1] >= 4095) && falling_detect == 0)
+          // Check if the peak is detected between adjacent values
+          if ((ring_buffer[ring_counter] < 4095) && (ring_buffer[ring_counter - 1] >= 4095) && falling_detect == 0) 
           {
-            falling_detect = 1;
-            max_value = (ring_counter - 1);
+            falling_detect = 1;  // Peak detected
+            max_value = (ring_counter - 1); // Set the peak value
           }
         }
 
+        // Check if the midpoint detection should be activated
         if (ring_counter == 0)
         {
           if (falling_detect == 1 && (ring_buffer[239] >= 2048) && (ring_buffer[0] < 2048) && start_countdown == 0)
           {
-            start_countdown = 1;
-            middle_id = 0;
+            start_countdown = 1; // Start the countdown
+            middle_id = 0;       // Set the middle value index
           }
         }
         else
         {
           if (falling_detect == 1 && (ring_buffer[ring_counter] < 2048) && (ring_buffer[ring_counter - 1] >= 2048) && start_countdown == 0)
           {
-            start_countdown = 1;
-            middle_id = ring_counter;
+            start_countdown = 1; // Start the countdown
+            middle_id = ring_counter; // Set the middle value index
           }
         }
 
+        // Check if the RC timing value should be detected
         if (ring_counter == 0)
         {
           if (falling_detect == 1 && (ring_buffer[239] >= 1506) && (ring_buffer[0] < 1506) && RC_timing == 0)
           {
-            RC_timing = 1;
-            RC_Id = 0;
+            RC_timing = 1;  // RC time detected
+            RC_Id = 0;      // Set the RC value
           }
         }
         else
         {
           if (falling_detect == 1 && (ring_buffer[ring_counter] < 1506) && (ring_buffer[ring_counter - 1] >= 1506) && RC_timing == 0)
           {
-            RC_timing = 1;
-            RC_Id = ring_counter;
+            RC_timing = 1;  // RC time detected
+            RC_Id = ring_counter; // Set the RC value
           }
         }
       }
 
+      // If the countdown has started, check if the threshold has been reached
       if (start_countdown == 1)
       {
         if (treshhold_counter <= 0)
         {
-          draw_variable = 1;
+          draw_variable = 1;  // Allow drawing the data
         }
         else
         {
-          treshhold_counter -= 1;
+          treshhold_counter -= 1;  // Decrease the countdown
         }
       }
 
+      // Update the ring buffer index (wrap around after 240 values)
       ring_counter = (ring_counter += 1) % 240;
     }
   }
 
-  TIM2->SR &= ~TIM_SR_UIF; // Clear the interrupt flag
+  // Clear the update interrupt flag
+  TIM2->SR &= ~TIM_SR_UIF; 
 }
 uint8_t iterator = 0;
 uint8_t upper_limit = 0;
 uint16_t top_marker;
-
-void draw_funciton(void)
+/**
+ * @brief  Draws the graph with markers of important values
+ */
+void draw_function(void)
 {
 
-  if (draw_variable == 1 && ring_buffer[max_value] > ring_buffer[middle_id])
+  if (draw_variable == 1 && ring_buffer[max_value] > ring_buffer[middle_id]) // check if drawing possible
   {
-    GPIOC->ODR |= GPIO_ODR_OD6;
+    GPIOC->ODR |= GPIO_ODR_OD6; //toggle led
 
-    ili9341_rect_fill(0, 55, 240, 100, ILI9341_COLOR_WHITE);
-    if ((middle_id - 120) < 0)
+    ili9341_rect_fill(0, 55, 240, 100, ILI9341_COLOR_WHITE); // clear old graph
+    if ((middle_id - 120) < 0)  // determine which part of the ring_buffer should be printed on which part of the display
     {
       iterator = middle_id + 120;
       upper_limit = 240 - iterator;
@@ -295,8 +325,9 @@ void draw_funciton(void)
       upper_limit = 240 - iterator;
     }
 
-    for (uint8_t i = 0; i < upper_limit; i++)
-    {
+    for (uint8_t i = 0; i < upper_limit; i++) //account for the continuous recording of measurements when printing
+    { 
+       //prints each measurement 
       ili9341_pixel_set(i, 150 - ((ring_buffer[iterator]) / 65), ILI9341_COLOR_BLACK);
       ili9341_pixel_set(i, 149 - ((ring_buffer[iterator]) / 65), ILI9341_COLOR_BLACK);
       iterator += 1;
@@ -305,7 +336,7 @@ void draw_funciton(void)
 
     for (uint8_t i = upper_limit; i < 240; i++)
     {
-
+       //prints each measurement 
       ili9341_pixel_set(i, 150 - ((ring_buffer[iterator]) / 65), ILI9341_COLOR_BLACK);
       ili9341_pixel_set(i, 149 - ((ring_buffer[iterator]) / 65), ILI9341_COLOR_BLACK);
       iterator += 1;
@@ -315,7 +346,7 @@ void draw_funciton(void)
     draw_marker();
     display_logic();
     zoom_function();
-
+    // reset all variables for next iteration
     draw_variable = 0;
     falling_detect = 0;
     start_countdown = 0;
@@ -323,7 +354,7 @@ void draw_funciton(void)
     measure_count = 0;
     treshhold_counter = 120;
   }
-  else if (draw_variable == 1)
+  else if (draw_variable == 1) // also reset if it could not draw 
   {
     draw_variable = 0;
     falling_detect = 0;
@@ -334,6 +365,9 @@ void draw_funciton(void)
   }
 }
 
+/**
+ * @brief  Changes sample times based on the selected zoom level
+ */
 void zoom_function(void)
 {
   if (zoom_pos == 4)
@@ -382,6 +416,9 @@ void draw_marker(void)
   
 }
 
+/**
+ * @brief  Calculates average voltage of the capacitor and prints the result on the display
+ */
 void calc_avg(void)
 {
   float avg = 0;
@@ -389,50 +426,60 @@ void calc_avg(void)
 
   for (uint8_t j = 0; j < 240; j++)
   {
-    avg += (float)ring_buffer[j];
+    avg += (float)ring_buffer[j]; //add up all values of the ringbuffer
   }
-  avg = avg / 240;
-  avg = avg * 3300 / 4095;
+  avg = avg / 240; // divide by 240 for avg 
+  avg = avg * 3300 / 4095; //calculate to mV
 
+ // display of AVG on Screen
   pmi_string_float2str(avg_str, 7, avg, 7);
-
   ili9341_text_pos_set(6, 7);
   ili9341_str_clear(6, ILI9341_COLOR_WHITE);
   ili9341_text_pos_set(6, 7);
   ili9341_str_print(avg_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
+
+/**
+ * @brief  Calculates the difference between the highest and the lowest values in the waveforms,
+ *         Prints the result on the display
+ */
 void calc_peaktopeak(void)
 {
-  float max_peak = 0;
-  float min_peak = 4095;
-  float ptp = 0;
+  float max_peak = 0; // reset max peak for iteration
+  float min_peak = 4095; // reset min_peak for iteration
+  float ptp = 0; // reset ptp value
   char ptp_str[7];
 
   for (uint8_t u = 0; u < 240; u++)
   {
-    if ((float)ring_buffer[u] > max_peak)
+    if ((float)ring_buffer[u] > max_peak) // find the biggest value in buffer 
     {
       max_peak = (float)ring_buffer[u];
     }
 
-    if ((float)ring_buffer[u] < min_peak)
+    if ((float)ring_buffer[u] < min_peak) // find the smallest value in buffer
     {
       min_peak = (float)ring_buffer[u];
     }
   }
-  ptp = max_peak - min_peak;
-  ptp = ptp * 3300 / 4095;
+  ptp = max_peak - min_peak; //calc ptp value
+  ptp = ptp * 3300 / 4095;  // calculate to mV 
 
+   // display of ptp on Screen
   pmi_string_float2str(ptp_str, 7, ptp, 7);
-
   ili9341_text_pos_set(6, 8);
-  ili9341_str_clear(6, ILI9341_COLOR_WHITE);
+  ili9341_str_clear(7, ILI9341_COLOR_WHITE);
   ili9341_text_pos_set(6, 8);
   ili9341_str_print(ptp_str, ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
 }
 
 float RC_value; //RC_value and C_value are the same
+
+/**
+ * @brief  Calculates the RC and C Value of the graph on the display,
+ *         Prints the result on the display
+ */
 void calc_RC_C(void)
 {
   RC_value = 0; //RC_value and C_value are the same
@@ -462,12 +509,18 @@ void calc_RC_C(void)
   
 }
 
+/**
+ * @brief  Calls the calculation funtions,
+ *         Prints zoom values and span values
+ */
 void display_logic(void)
-{
+{ 
+  // call all calculate functions
   calc_avg();
   calc_peaktopeak();
   calc_RC_C();
 
+  //check current zoom pos to print Span and Zoom
   if (zoom_pos == 0)
   { ili9341_text_pos_set(6, 11);
     ili9341_str_clear(6, ILI9341_COLOR_WHITE);
@@ -531,7 +584,7 @@ void display_logic(void)
     ili9341_str_print("0.25x", ILI9341_COLOR_BLACK, ILI9341_COLOR_WHITE);
   }
   uint16_t no_jumper = 0;
-  no_jumper = (RC_value / (1 << zoom_pos));
+  no_jumper = (RC_value / (1 << zoom_pos));  // detect no jumper
 
   if (no_jumper == 100)
   {
@@ -545,6 +598,9 @@ void display_logic(void)
   }
 }
 
+/**
+ * @brief  Prints static text on the display (no changes when the program runs)
+ */
 void display_return(void)
 {
 
@@ -609,7 +665,7 @@ int main(void)
 
     while (1)
     {
-      draw_funciton();
+      draw_function();
     }
   }
 }

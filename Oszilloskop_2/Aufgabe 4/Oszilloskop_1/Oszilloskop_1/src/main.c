@@ -6,6 +6,7 @@
 #include <pmi_string.h>
 #include <ow.h>
 #include <systick.h>
+
 /** 
  * Global Variables
  * These variables are used for various states and calculations across the program.
